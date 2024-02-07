@@ -8,9 +8,10 @@ interface IFooterProps{
   videoMediaStream :MediaStream 
   peerConnections : MutableRefObject<Record<string, RTCPeerConnection>>
   localStream : RefObject<HTMLVideoElement>
+  logout : ()=>void
 }
 
-export default function Footer({videoMediaStream, peerConnections,localStream}:IFooterProps){
+export default function Footer({videoMediaStream, peerConnections,localStream,logout}:IFooterProps){
   const date = new Date()
   const [isMuted,setIsMuted] = useState(false)
   const [isCameraOff,setIsCameraOff] = useState(false)
@@ -129,7 +130,10 @@ export default function Footer({videoMediaStream, peerConnections,localStream}:I
             ) }
           
           
-          <Phone className="h-12 w-16 cursor-pointer hover:bg-red-500 text-white p-2 bg-primary rounded-md"/>
+          <Phone 
+            className="h-12 w-16 cursor-pointer hover:bg-red-500 text-white p-2 bg-primary rounded-md"
+            onClick={logout}
+          />
         </div>
       </div>
       </Container>

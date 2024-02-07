@@ -3,6 +3,7 @@ import Chat from "@/components/Chat";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { SocketContext } from "@/contexts/SocketContext";
+import { useRouter } from "next/navigation";
 import { useContext, useEffect, useRef, useState } from "react";
 
 interface IAnswer {
@@ -13,14 +14,20 @@ interface ICandidate {
   sender:string
   candidate: RTCIceCandidate
 }
+interface IDataStream {
+  id:string
+  stream: MediaStream
+}
 
 export default function Room({params}:{params:{id:string}}){
   const {socket} = useContext(SocketContext)
   const localStream = useRef<HTMLVideoElement>(null)
   const peerConnections = useRef<Record<string,RTCPeerConnection>>({})
 
+  const router = useRouter()
+
   const [videoMediaStream,setVideoMediaStream] = useState<MediaStream | null>(null)
-  const [remoteStreams,setRemoveStreams] = useState<MediaStream[]>([])
+  const [remoteStreams,setRemoveStreams] = useState<IDataStream[]>([])
 
   
   useEffect(()=>{
@@ -127,12 +134,17 @@ export default function Room({params}:{params:{id:string}}){
     peerConnection.ontrack = (event)=>{
       const remoteStream = event.streams[0]
 
-      // const dataStream = {
-      //   id: socketId,
-      //   stream: remoteStream
-      // }
-      // setRemoveStreams(state => [...state,remoteStream])
-      setRemoveStreams([...remoteStreams,remoteStream])
+      const dataStream: IDataStream = {
+        id: socketId,
+        stream: remoteStream
+      }
+      setRemoveStreams(
+      (state: IDataStream[]) => {
+        if (!state.some((stream) => stream.id === socketId)) {
+          return [...state, dataStream];
+        }
+        return state;
+      });
     }
 
     peer.onicecandidate = (event) =>{
@@ -144,7 +156,49 @@ export default function Room({params}:{params:{id:string}}){
         })
       }
     }
+
+    peerConnection.onsignalingstatechange = (event)=>{
+      switch(peerConnection.signalingState){
+        case 'closed':
+          setRemoveStreams((state)=>
+            state.filter((stream)=> stream.id !== socketId)
+          )
+        break
+      }
+    }
+
+    peerConnection.onconnectionstatechange = (event)=>{
+      switch(peerConnection.connectionState){
+        case 'disconnected':
+          setRemoveStreams((state)=>
+            state.filter((stream)=> stream.id !== socketId)
+          )
+        case 'failed':
+          setRemoveStreams((state)=>
+            state.filter((stream)=> stream.id !== socketId)
+          )
+        case 'closed':
+          setRemoveStreams((state)=>
+            state.filter((stream)=> stream.id !== socketId)
+          )
+        break
+      }
+    }
   } 
+
+  const handleLogout = ()=>{
+    videoMediaStream?.getTracks().forEach((track)=>{
+      track.stop()
+    })
+
+    Object.values(peerConnections.current).forEach((peerConnection)=>{
+      peerConnection.close()
+    })
+
+    socket?.disconnect()
+
+    router.push('/')
+  }
 
   const initLocalCamera = async ()=>{
     const video = await navigator.mediaDevices.getUserMedia({
@@ -184,7 +238,7 @@ export default function Room({params}:{params:{id:string}}){
                 return(
                   <div key={index} className="bg-gray-950 w-full rounded-md h-ful p-2 relative">
                     <video src="" className="h-full w-full" autoPlay playsInline ref={(video)=>{
-                      if(video && video.srcObject !== stream ) video.srcObject = stream
+                      if(video && video.srcObject !== stream.stream ) video.srcObject = stream.stream
                     }}/>
                     <span className="absolute bottom-3">Convidado</span>
                   </div>
@@ -195,7 +249,12 @@ export default function Room({params}:{params:{id:string}}){
         </div>
         <Chat roomId={params.id}/>
       </div>
-        <Footer videoMediaStream={videoMediaStream!} peerConnections={peerConnections} localStream={localStream} />
+        <Footer 
+          videoMediaStream={videoMediaStream!} 
+          peerConnections={peerConnections} 
+          localStream={localStream} 
+          logout={()=>handleLogout()}
+        />
     </div>
   )
 }
