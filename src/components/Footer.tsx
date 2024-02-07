@@ -5,7 +5,7 @@ import Container from "./Container";
 import { MutableRefObject, RefObject, useState } from "react";
 
 interface IFooterProps{
-  videoMediaStream :MediaStream | null
+  videoMediaStream :MediaStream 
   peerConnections : MutableRefObject<Record<string, RTCPeerConnection>>
   localStream : RefObject<HTMLVideoElement>
 }
@@ -23,6 +23,17 @@ export default function Footer({videoMediaStream, peerConnections,localStream}:I
       track.enabled = !isMuted
     })
     setIsMuted(!isMuted)
+    Object.values(peerConnections.current).forEach((peerConnection)=>{
+      peerConnection.getSenders().forEach((sender)=>{
+        if(sender.track?.kind === 'audio'){
+          if(videoMediaStream?.getAudioTracks().length > 0){
+            sender.replaceTrack(
+              videoMediaStream?.getAudioTracks().find((track)=>track.kind === 'audio') || null
+            )
+          }
+        }
+      })
+    })
   }
   const toggleVideo = ()=>{
     setIsCameraOff(!isCameraOff)
@@ -34,7 +45,7 @@ export default function Footer({videoMediaStream, peerConnections,localStream}:I
       peerConnection.getSenders().forEach((sender)=>{
         if(sender.track?.kind === 'video' && videoMediaStream){
           sender?.replaceTrack(
-            videoMediaStream?.getVideoTracks().find((track)=> track.kind === 'video')
+            videoMediaStream?.getVideoTracks().find((track)=> track.kind === 'video') || null
           )
         }
       })
