@@ -22,7 +22,6 @@ export default function Room({params}:{params:{id:string}}){
   const [videoMediaStream,setVideoMediaStream] = useState<MediaStream | null>(null)
   const [remoteStreams,setRemoveStreams] = useState<MediaStream[]>([])
 
-  console.log(remoteStreams)
   
   useEffect(()=>{
     socket?.on('connect',async ()=>{
@@ -104,6 +103,7 @@ export default function Room({params}:{params:{id:string}}){
         peerConnection.addTrack(track, videoMediaStream)
       })
     }else{
+      console.log("initRemoteCamera else")
      const video = await initRemoteCamera()
      video.getTracks().forEach((track)=>{
       peerConnection.addTrack(track,video)
@@ -131,7 +131,8 @@ export default function Room({params}:{params:{id:string}}){
       //   id: socketId,
       //   stream: remoteStream
       // }
-      setRemoveStreams(state => [...state,remoteStream])
+      // setRemoveStreams(state => [...state,remoteStream])
+      setRemoveStreams([...remoteStreams,remoteStream])
     }
 
     peer.onicecandidate = (event) =>{
@@ -177,7 +178,7 @@ export default function Room({params}:{params:{id:string}}){
             <div className="grid md:grid-cols-2 grid-cols-1 gap-8">
               <div className="bg-gray-950 w-full rounded-md h-ful p-2 relative">
                 <video src="" className="h-full w-full rounded-sm mirror-mode" autoPlay playsInline ref={localStream}/>
-                <span className="absolute bottom-3">Rafael Matos</span>
+                <span className="absolute bottom-3">Criador</span>
               </div>
               {remoteStreams.map((stream,index)=>{
                 return(
@@ -185,7 +186,7 @@ export default function Room({params}:{params:{id:string}}){
                     <video src="" className="h-full w-full" autoPlay playsInline ref={(video)=>{
                       if(video && video.srcObject !== stream ) video.srcObject = stream
                     }}/>
-                    <span className="absolute bottom-3">Rafael Matos</span>
+                    <span className="absolute bottom-3">Convidado</span>
                   </div>
                 )
               })}
@@ -194,7 +195,7 @@ export default function Room({params}:{params:{id:string}}){
         </div>
         <Chat roomId={params.id}/>
       </div>
-        <Footer/>
+        <Footer videoMediaStream={videoMediaStream} peerConnections={peerConnections} localStream={localStream} />
     </div>
   )
 }
